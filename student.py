@@ -42,14 +42,18 @@ def compute_photometric_stereo_impl(lights, images):
         for h in range(height):
             for w in range(width):
                 for c in range(channel):
-                    I = np.array(img[h, w, c])
-                    I.reshape((len(images), 1))
+                    I = np.array(img[h, w, c]).reshape((len(images), 1))
                     # compute G
                     L = lights.T
                     G = np.dot(np.linalg.inv(np.dot(L.T, L)), np.dot(L.T, I))
                     kd = np.linalg.norm(G)
-                    albedo = kd
-                    normals = (G / kd).reshape((3,))
+                    # albedo has l2 norm < 1e-7, set it to black and normal to 0
+                    if kd < 1e-7:
+                        albedo = 0
+                        normals[h, w] = np.zeros((3,1))
+                    else:
+                        albedo[h, w, c] = kd
+                        normals[h, w] = (G / kd)
     return albedo, normals
 
 
@@ -75,6 +79,8 @@ def project_impl(K, Rt, points):
         for w in width:
             p = points[h, w]
             # make into homography
+            print('p', p)
+            p.append(p, 1)
             p = np.dot(p, KRt)
             projections[h, w, 0] = p[0] / p[2]
             projections[h, w, 1] = p[1] / p[2]
@@ -152,7 +158,8 @@ def compute_ncc_impl(image1, image2):
 
     for h in height:
         for w in width:
-            ncc[h, w] = np.correlate(image1[h, w], image2[h, w])[0]
+            ncc[h, w] = np.correlate(image1[h, w], image2[h, w])
+            ncc[h, w] = ncc[h, w][0]
     return ncc
 
 
