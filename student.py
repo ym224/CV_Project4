@@ -5,6 +5,7 @@ from math import floor
 import numpy as np
 import cv2
 from scipy.sparse import csr_matrix
+import logging
 # import util_sweep
 # END IMPORTS
 
@@ -145,22 +146,27 @@ def preprocess_ncc_impl(image, ncc_size):
     """
 
     height, width, channels = image.shape
-    normalized = np.zeros((height, width, ncc_size**2 * channels))
+    normalized = np.zeros((height, width, channels * ncc_size**2), dtype = np.float32)
     # select patch size and assume ncc_size is odd
-    size = (ncc_size - 1)/2
+    size = int(ncc_size /2)
 
     for h in range(height):
         for w in range(width):
-            zero_mean_vec = []
+            mean_vec_channels = []
+            tmp = []
+            #if patch is out of bounds, ignore patch
+            h1 = h - size
+            h2 = h + size
+            w1 = w - size
+            w2 = w + size
+            if h1 < 0 or h2 >= height or w1 < 0 or w2 >= width:
+                continue
             for c in range(channels):
-                # if patch is out of bounds, ignore patch
-                if h - size < 0 or h + size >= height or w - size < 0 or w + size >= width:
-                    continue
-                patch = image[h - size: h + size + 1, w - size: w + size + 1]
+                patch = image[h1: h2 + 1, w1: w2 + 1, c]
                 # compute and subtract mean of each patch per channel
                 mean = np.mean(patch)
-                zero_mean_vec.append((patch - mean).flatten())
-            mean_vec = np.concatenate((mean_vec_channel), axis=1)
+                mean_vec_channels.append((patch - mean).flatten())
+            mean_vec = np.concatenate(mean_vec_channels)
             # compute l2 of mean vectors
             l2 = np.linalg.norm(mean_vec)
             # If norm < 1e-6, set the vector for that patch to zero
