@@ -153,12 +153,13 @@ def preprocess_ncc_impl(image, ncc_size):
     for h in range(height):
         for w in range(width):
             mean_vec_channels = []
-            tmp = []
-            #if patch is out of bounds, ignore patch
+
             h1 = h - size
             h2 = h + size
             w1 = w - size
             w2 = w + size
+
+            #if patch is out of bounds, ignore patch
             if h1 < 0 or h2 >= height or w1 < 0 or w2 >= width:
                 continue
             for c in range(channels):
@@ -166,6 +167,7 @@ def preprocess_ncc_impl(image, ncc_size):
                 # compute and subtract mean of each patch per channel
                 mean = np.mean(patch)
                 mean_vec_channels.append((patch - mean).flatten())
+
             mean_vec = np.concatenate(mean_vec_channels)
             # compute l2 of mean vectors
             l2 = np.linalg.norm(mean_vec)
