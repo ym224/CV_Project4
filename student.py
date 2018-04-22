@@ -34,26 +34,28 @@ def compute_photometric_stereo_impl(lights, images):
     """
 
     height, width, channel = images[0].shape[0], images[0].shape[1], images[0].shape[2]
-    albedo = np.zero((height, width, 3), dtype = np.float32)
-    normals = np.zero((height, width, 3), dtype = np.float32)
+    albedo = np.zeros((height, width, channel), dtype = np.float32)
+    normals = np.zeros((height, width, 3), dtype = np.float32)
 
 
-    for img in images:
-        for h in range(height):
-            for w in range(width):
-                for c in range(channel):
-                    I = np.array(img[h, w, c]).reshape((len(images), 1))
-                    # compute G
-                    L = lights.T
-                    G = np.dot(np.linalg.inv(np.dot(L.T, L)), np.dot(L.T, I))
-                    kd = np.linalg.norm(G)
-                    # albedo has l2 norm < 1e-7, set it to black and normal to 0
-                    if kd < 1e-7:
-                        albedo = 0
-                        normals[h, w] = np.zeros((3,1))
-                    else:
-                        albedo[h, w, c] = kd
-                        normals[h, w] = (G / kd)
+    for h in range(height):
+        for w in range(width):
+            for c in range(channel):
+                I = []
+                for img in images:
+                    I.append(img[h, w, c])
+                np.array(I).reshape((len(images), 1))
+                # compute G
+                L = lights.T
+                G = np.dot(np.linalg.inv(np.dot(L.T, L)), np.dot(L.T, I))
+                kd = np.linalg.norm(G)
+                # albedo has l2 norm < 1e-7, set it to black and normal to 0
+                if kd < 1e-7:
+                    albedo[h, w] = 0
+                    normals[h, w] = np.zeros((3,))
+                else:
+                    albedo[h, w, c] = kd
+                    normals[h, w] = (G / kd).reshape((3,))
     return albedo, normals
 
 
@@ -71,16 +73,14 @@ def project_impl(K, Rt, points):
     """
 
     height, width = points.shape[0], points.shape[1]
-    projections = np.zero((height, width, 2))
+    projections = np.zeros((height, width, 2))
 
     KRt = np.dot(K, Rt)
 
-    for h in height:
-        for w in width:
+    for h in range(height):
+        for w in range(width):
             p = points[h, w]
-            # make into homography
-            print('p', p)
-            p.append(p, 1)
+            #np.append(p, 1)
             p = np.dot(p, KRt)
             projections[h, w, 0] = p[0] / p[2]
             projections[h, w, 1] = p[1] / p[2]
@@ -154,10 +154,10 @@ def compute_ncc_impl(image1, image2):
                image2.
     """
     height, width = image1.shape[0], image1.shape[1]
-    ncc = np.zero((height, width))
+    ncc = np.zeros((height, width))
 
-    for h in height:
-        for w in width:
+    for h in range(height):
+        for w in range(width):
             ncc[h, w] = np.correlate(image1[h, w], image2[h, w])
             ncc[h, w] = ncc[h, w][0]
     return ncc
