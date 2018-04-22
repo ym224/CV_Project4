@@ -80,10 +80,14 @@ def project_impl(K, Rt, points):
     for h in range(height):
         for w in range(width):
             p = points[h, w]
-            #np.append(p, 1)
-            p = np.dot(p, KRt)
-            projections[h, w, 0] = p[0] / p[2]
-            projections[h, w, 1] = p[1] / p[2]
+            # pad p to col size of KRt
+            p = np.append(p, 1)
+            p = np.dot(KRt, p)
+	    p_x = p[0] / p[2]
+	    p_y = p[1] / p[2]
+
+            projections[h, w, 0] = p_x
+            projections[h, w, 1] = p_y
 
     return projections
 
@@ -159,7 +163,6 @@ def compute_ncc_impl(image1, image2):
     for h in range(height):
         for w in range(width):
             ncc[h, w] = np.correlate(image1[h, w], image2[h, w])
-            ncc[h, w] = ncc[h, w][0]
     return ncc
 
 
