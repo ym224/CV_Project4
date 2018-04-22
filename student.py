@@ -33,7 +33,7 @@ def compute_photometric_stereo_impl(lights, images):
                    the input images.
     """
 
-    height, width, channel = images[0].shape[0], images[0].shape[1], images[0].shape[2]
+    height, width, channel = images[0].shape
     albedo = np.zeros((height, width, channel), dtype = np.float32)
     normals = np.zeros((height, width, 3), dtype = np.float32)
 
@@ -51,7 +51,7 @@ def compute_photometric_stereo_impl(lights, images):
                 kd = np.linalg.norm(G)
                 # albedo has l2 norm < 1e-7, set it to black and normal to 0
                 if kd < 1e-7:
-                    albedo[h, w] = 0
+                    albedo[h, w, c] = 0
                     normals[h, w] = np.zeros((3,))
                 else:
                     albedo[h, w, c] = kd
@@ -83,8 +83,9 @@ def project_impl(K, Rt, points):
             # pad p to col size of KRt
             p = np.append(p, 1)
             p = np.dot(KRt, p)
-	    p_x = p[0] / p[2]
-	    p_y = p[1] / p[2]
+	    
+            p_x = p[0] / p[2]
+            p_y = p[1] / p[2]
 
             projections[h, w, 0] = p_x
             projections[h, w, 1] = p_y
@@ -142,7 +143,32 @@ def preprocess_ncc_impl(image, ncc_size):
     Output:
         normalized -- heigth x width x (channels * ncc_size**2) array
     """
-    raise NotImplementedError()
+
+    height, width, channels = image.shape
+    normalized = np.zeros((height, width, ncc_size**2 * channels))
+    # select patch size and assume ncc_size is odd
+    size = (ncc_size - 1)/2
+
+    for h in range(height):
+        for w in range(width):
+            zero_mean_vec = []
+            for c in range(channels):
+                # if patch is out of bounds, ignore patch
+                if h - size < 0 or h + size >= height or w - size < 0 or w + size >= width:
+                    continue
+                patch = image[h - size: h + size + 1, w - size: w + size + 1]
+                # compute and subtract mean of each patch per channel
+                mean = np.mean(patch)
+                zero_mean_vec.append((patch - mean).flatten())
+            mean_vec = np.concatenate((mean_vec_channel), axis=1)
+            # compute l2 of mean vectors
+            l2 = np.linalg.norm(mean_vec)
+            # If norm < 1e-6, set the vector for that patch to zero
+            if l2 < 1e-6:
+                normalized[h, w] = np.zeros((mean_vec.shape))
+            else: 
+                normalized[h, w] = mean_vec / l2
+    return normalized
 
 
 def compute_ncc_impl(image1, image2):
@@ -162,7 +188,7 @@ def compute_ncc_impl(image1, image2):
 
     for h in range(height):
         for w in range(width):
-            ncc[h, w] = np.correlate(image1[h, w], image2[h, w])
+            ncc[h, w] = np.correlate(image1[h, w], image2[h, w])[0]
     return ncc
 
 
